@@ -632,6 +632,10 @@ static int process_write(const char *path, const void *data, u64 offset,
 	u64 pos = 0;
 	int w;
 
+	if (g_verbose >= 2)
+		fprintf(stderr, "write %s, offset %llu, len %llu\n",
+			path, offset, len);
+
 	ret = open_inode_for_write(r, full_path);
 	if (ret < 0)
 		goto out;
@@ -667,6 +671,11 @@ static int process_clone(const char *path, u64 offset, u64 len,
 	char *subvol_path = NULL;
 	char *full_clone_path = NULL;
 	int clone_fd = -1;
+
+	if (g_verbose >= 2)
+		fprintf(stderr,
+			"clone %s, offset %llu, len %llu, clone path %s, clone offset %llu\n",
+			path, offset, len, clone_path, clone_offset);
 
 	ret = open_inode_for_write(r, full_path);
 	if (ret < 0)
