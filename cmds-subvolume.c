@@ -575,9 +575,9 @@ static int get_subvolid(const char *str, u64 *subvolid)
 {
 	char *p;
 	errno = 0;
-	*subvolid = strtoull(optarg, &p, 10);
+	*subvolid = strtoull(str, &p, 10);
 	if (errno || *p != '\0') {
-		fprintf(stderr, "ERROR: invalid subvolume id '%s'\n", optarg);
+		fprintf(stderr, "ERROR: invalid subvolume id '%s'\n", str);
 		return -EINVAL;
 	}
 	return 0;
