@@ -470,7 +470,7 @@ int btrfs_read_and_process_send_stream(int fd,
 	}
 
 	s.version = le32_to_cpu(hdr.version);
-	if (s.version > BTRFS_SEND_STREAM_VERSION) {
+	if (s.version > BTRFS_SEND_STREAM_VERSION_MAX) {
 		ret = -EINVAL;
 		fprintf(stderr, "ERROR: Stream version %d not supported. "
 				"Please upgrade btrfs-progs\n", s.version);

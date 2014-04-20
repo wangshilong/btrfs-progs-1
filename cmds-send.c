@@ -32,6 +32,7 @@
 #include <libgen.h>
 #include <mntent.h>
 #include <assert.h>
+#include <getopt.h>
 
 #include <uuid/uuid.h>
 
@@ -45,6 +46,7 @@
 #include "send-utils.h"
 
 static int g_verbose = 0;
+static int g_stream_version = BTRFS_SEND_STREAM_VERSION_1;
 
 struct btrfs_send {
 	int send_fd;
@@ -284,6 +286,8 @@ static int do_send(struct btrfs_send *send, u64 parent_root_id,
 		io_send.flags |= BTRFS_SEND_FLAG_OMIT_STREAM_HEADER;
 	if (!is_last_subvol)
 		io_send.flags |= BTRFS_SEND_FLAG_OMIT_END_CMD;
+	if (g_stream_version == BTRFS_SEND_STREAM_VERSION_2)
+		io_send.flags |= BTRFS_SEND_FLAG_STREAM_V2;
 	ret = ioctl(subvol_fd, BTRFS_IOC_SEND, &io_send);
 	if (ret) {
 		ret = -errno;
@@ -417,6 +421,11 @@ out:
 	return ret;
 }
 
+static const struct option long_options[] = {
+	{ "stream-version", 1, NULL, 'V' },
+	{ NULL, 0, NULL, 0 }
+};
+
 int cmd_send(int argc, char **argv)
 {
 	char *subvol = NULL;
@@ -435,7 +444,8 @@ int cmd_send(int argc, char **argv)
 	memset(&send, 0, sizeof(send));
 	send.dump_fd = fileno(stdout);
 
-	while ((c = getopt(argc, argv, "vec:f:i:p:")) != -1) {
+	while ((c = getopt_long(argc, argv, "vec:f:i:p:",
+				long_options, NULL)) != -1) {
 		switch (c) {
 		case 'v':
 			g_verbose++;
@@ -522,6 +532,24 @@ int cmd_send(int argc, char **argv)
 				"ERROR: -i was removed, use -c instead\n");
 			ret = 1;
 			goto out;
+		case 'V':
+			if (sscanf(optarg, "%d", &g_stream_version) != 1) {
+				fprintf(stderr,
+					"ERROR: invalid value for stream version: %s\n",
+					optarg);
+				ret = 1;
+				goto out;
+			}
+			if (g_stream_version <= 0 ||
+			    g_stream_version > BTRFS_SEND_STREAM_VERSION_MAX) {
+				fprintf(stderr,
+					"ERROR: unsupported stream version %d, minimum: 1, maximum: %d\n",
+					g_stream_version,
+					BTRFS_SEND_STREAM_VERSION_MAX);
+				ret = 1;
+				goto out;
+			}
+			break;
 		case '?':
 		default:
 			fprintf(stderr, "ERROR: send args invalid.\n");
@@ -691,7 +719,7 @@ out:
 }
 
 const char * const cmd_send_usage[] = {
-	"btrfs send [-ve] [-p <parent>] [-c <clone-src>] [-f <outfile>] <subvol> [<subvol>...]",
+	"btrfs send [-ve] [--stream-version <version>] [-p <parent>] [-c <clone-src>] [-f <outfile>] <subvol> [<subvol>...]",
 	"Send the subvolume(s) to stdout.",
 	"Sends the subvolume(s) specified by <subvol> to stdout.",
 	"By default, this will send the whole subvolume. To do an incremental",
@@ -704,16 +732,19 @@ const char * const cmd_send_usage[] = {
 	"which case 'btrfs send' will determine a suitable parent among the",
 	"clone sources itself.",
 	"\n",
-	"-v               Enable verbose debug output. Each occurrence of",
-	"                 this option increases the verbose level more.",
-	"-e               If sending multiple subvols at once, use the new",
-	"                 format and omit the end-cmd between the subvols.",
-	"-p <parent>      Send an incremental stream from <parent> to",
-	"                 <subvol>.",
-	"-c <clone-src>   Use this snapshot as a clone source for an ",
-	"                 incremental send (multiple allowed)",
-	"-f <outfile>     Output is normally written to stdout. To write to",
-	"                 a file, use this option. An alternative would be to",
-	"                 use pipes.",
+	"-v                          Enable verbose debug output. Each occurrence of",
+	"                            this option increases the verbose level more.",
+	"-e                          If sending multiple subvols at once, use the new",
+	"                            format and omit the end-cmd between the subvols.",
+	"-p <parent>                 Send an incremental stream from <parent> to",
+	"                            <subvol>.",
+	"-c <clone-src>              Use this snapshot as a clone source for an ",
+	"                            incremental send (multiple allowed)",
+	"-f <outfile>                Output is normally written to stdout. To write to",
+	"                            a file, use this option. An alternative would be to",
+	"                            use pipes.",
+	"--stream-version <version>  Ask the kernel to produce a specific send stream",
+	"                            version. More recent stream versions provide new",
+	"                            features and better performance. Default value is 1.",
 	NULL
 };

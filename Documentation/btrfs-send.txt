@@ -40,6 +40,9 @@ Use this snapshot as a clone source for an incremental send (multiple allowed).
 -f <outfile>::
 Output is normally written to stdout. To write to a file, use this option.
 An alternative would be to use pipes.
+--stream-version <version>::
+Ask the kernel to produce a specific send stream version. More recent stream versions provide
+new features and better performance. Default value is 1.
 
 EXIT STATUS
 -----------
