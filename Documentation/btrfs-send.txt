@@ -43,6 +43,10 @@ An alternative would be to use pipes.
 --stream-version <version>::
 Ask the kernel to produce a specific send stream version. More recent stream versions provide
 new features and better performance. Default value is 1.
+-s::
+Obtain the total data size for each subvolume or snapshot to send. This demands additional
+processing (mostly IO bound) but is useful for the receive command to report progress. This
+option requires send stream version 2 or higher.
 
 EXIT STATUS
 -----------
