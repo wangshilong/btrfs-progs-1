@@ -42,6 +42,7 @@
 #include <sys/types.h>
 #include <sys/xattr.h>
 #include <uuid/uuid.h>
+#include <linux/falloc.h>
 
 #include "ctree.h"
 #include "ioctl.h"
@@ -883,6 +884,42 @@ out:
 	return ret;
 }
 
+static int process_fallocate(const char *path, u32 flags, u64 offset,
+			     u64 len, void *user)
+{
+	struct btrfs_receive *r = user;
+	char *full_path = path_cat(r->full_subvol_path, path);
+	int mode = 0;
+	int ret;
+
+	if (flags & BTRFS_SEND_A_FALLOCATE_FLAG_KEEP_SIZE)
+		mode |= FALLOC_FL_KEEP_SIZE;
+	if (flags & BTRFS_SEND_A_FALLOCATE_FLAG_PUNCH_HOLE)
+		mode |= FALLOC_FL_PUNCH_HOLE;
+
+	if (g_verbose >= 2)
+		fprintf(stderr,
+			"fallocate %s - flags %u, offset %llu, len %llu\n",
+			path, flags, offset, len);
+
+	ret = open_inode_for_write(r, full_path);
+	if (ret < 0)
+		goto out;
+
+	ret = fallocate(r->write_fd, mode, offset, len);
+	if (ret) {
+		ret = -errno;
+		fprintf(stderr,
+			"ERROR: fallocate against %s failed. %s\n",
+			path, strerror(-ret));
+		goto out;
+	}
+	update_progress(r, len);
+
+out:
+	free(full_path);
+	return ret;
+}
 
 static struct btrfs_send_ops send_ops = {
 	.subvol = process_subvol,
@@ -906,6 +943,7 @@ static struct btrfs_send_ops send_ops = {
 	.chown = process_chown,
 	.utimes = process_utimes,
 	.total_data_size = process_total_data_size,
+	.fallocate = process_fallocate,
 };
 
 static int do_receive(struct btrfs_receive *r, const char *tomnt, int r_fd,
