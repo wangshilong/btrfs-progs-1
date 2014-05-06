@@ -1813,6 +1813,8 @@ int get_device_info(int fd, u64 devid,
 
 	di_args->devid = devid;
 	memset(&di_args->uuid, '\0', sizeof(di_args->uuid));
+	/* Clear flags to ensure old kernel returns untouched flags */
+	memset(&di_args->flags, 0, sizeof(di_args->flags));
 
 	ret = ioctl(fd, BTRFS_IOC_DEV_INFO, di_args);
 	return ret ? -errno : 0;
