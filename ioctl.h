@@ -160,12 +160,15 @@ struct btrfs_ioctl_dev_replace_args {
 	__u64 spare[64];
 };
 
+#define BTRFS_IOCTL_DEV_INFO_MISSING			(1ULL<<0)
+#define BTRFS_IOCTL_DEV_INFO_FLAG_SET			(1ULL<<63)
 struct btrfs_ioctl_dev_info_args {
 	__u64 devid;				/* in/out */
 	__u8 uuid[BTRFS_UUID_SIZE];		/* in/out */
 	__u64 bytes_used;			/* out */
 	__u64 total_bytes;			/* out */
-	__u64 unused[379];			/* pad to 4k */
+	__u64 flags;				/* out */
+	__u64 unused[378];			/* pad to 4k */
 	__u8 path[BTRFS_DEVICE_PATH_NAME_MAX];	/* out */
 };
 
