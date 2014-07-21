@@ -2570,3 +2570,20 @@ int fsid_to_mntpt(__u8 *fsid, char *mntpt, int *mnt_cnt)
 
 	return ret;
 }
+
+int btrfs_read_sysfs(char path[PATH_MAX])
+{
+	int fd;
+	char val;
+
+	fd = open(path, O_RDONLY);
+	if (fd < 0)
+		return -errno;
+
+	if (read(fd, &val, sizeof(char)) < sizeof(char)) {
+		close(fd);
+		return -EINVAL;
+	}
+	close(fd);
+	return atoi((const char *)&val);
+}

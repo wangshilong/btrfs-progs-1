@@ -24,6 +24,8 @@ extern "C" {
 #endif
 
 #define BTRFS_SEND_STREAM_MAGIC "btrfs-stream"
+#define BTRFS_SEND_STREAM_VER_PATH "/sys/fs/btrfs/send/stream_version"
+
 #define BTRFS_SEND_STREAM_VERSION_1 1
 #define BTRFS_SEND_STREAM_VERSION_2 2
 /* Max supported stream version. */

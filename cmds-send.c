@@ -443,6 +443,7 @@ int cmd_send(int argc, char **argv)
 	u64 parent_root_id = 0;
 	int full_send = 1;
 	int new_end_cmd_semantic = 0;
+	int k_sstream;
 
 	memset(&send, 0, sizeof(send));
 	send.dump_fd = fileno(stdout);
@@ -551,6 +552,18 @@ int cmd_send(int argc, char **argv)
 					BTRFS_SEND_STREAM_VERSION_MAX);
 				ret = 1;
 				goto out;
+			}
+
+			/* check if btrfs kernel supports send stream ver 2 */
+			if (g_stream_version > BTRFS_SEND_STREAM_VERSION_1) {
+				k_sstream = btrfs_read_sysfs(BTRFS_SEND_STREAM_VER_PATH);
+				if (k_sstream < g_stream_version) {
+					fprintf(stderr,
+					"ERROR: Need btrfs kernel send stream version %d or above, %d\n",
+					BTRFS_SEND_STREAM_VERSION_2, k_sstream);
+					ret = 1;
+					goto out;
+				}
 			}
 			break;
 		case 's':

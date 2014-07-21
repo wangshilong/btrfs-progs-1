@@ -140,5 +140,6 @@ static inline u64 btrfs_min_dev_size(u32 leafsize)
 	return 2 * (BTRFS_MKFS_SYSTEM_GROUP_SIZE +
 		    btrfs_min_global_blk_rsv_size(leafsize));
 }
+int btrfs_read_sysfs(char path[PATH_MAX]);
 
 #endif
