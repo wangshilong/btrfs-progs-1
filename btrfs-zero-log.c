@@ -46,6 +46,8 @@ int main(int ac, char **av)
 	struct btrfs_trans_handle *trans;
 	int ret;
 
+	printf("WARNING: btrfs-zero-log is now deprecated, use 'btrfs rescue zero-log' instead'\n");
+
 	set_argv0(av);
 	if (check_argc_exact(ac, 2))
 		print_usage();
