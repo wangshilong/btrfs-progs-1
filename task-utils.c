@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "task-util.h"
+#include "task-utils.h"
 
 struct task_info *task_init(void *(*threadfn)(void *), int (*postfn)(void *),
 			    void *thread_private)
@@ -80,7 +80,7 @@ int task_period_start(struct task_info *info, unsigned int period_ms)
 
 	info->periodic.wakeups_missed = 0;
 
-	sec = period_ms/1000;
+	sec = period_ms / 1000;
 	ns = (period_ms - (sec * 1000)) * 1000;
 	itval.it_interval.tv_sec = sec;
 	itval.it_interval.tv_nsec = ns;
@@ -99,10 +99,8 @@ void task_period_wait(struct task_info *info)
 		return;
 
 	ret = read(info->periodic.timer_fd, &missed, sizeof (missed));
-	if (ret == -1) {
-		perror ("read timer");
+	if (ret == -1)
 		return;
-	}
 
 	if (missed > 0)
 		info->periodic.wakeups_missed += (missed - 1);
