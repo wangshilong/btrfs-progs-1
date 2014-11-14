@@ -230,6 +230,18 @@ static int parse_filters(char *filters, struct btrfs_balance_args *args)
 				return 1;
 			}
 			args->flags |= BTRFS_BALANCE_ARGS_LIMIT;
+		} else if (!strcmp(this_char, "mincount")) {
+			if (!value || !*value) {
+				fprintf(stderr,
+					"the mincount filter requires an argument\n");
+				return 1;
+			}
+			if (parse_u64(value, &args->mincount)) {
+				fprintf(stderr, "Invalid mincount argument: %s\n",
+				       value);
+				return 1;
+			}
+			args->flags |= BTRFS_BALANCE_ARGS_MINCOUNT;
 		} else {
 			fprintf(stderr, "Unrecognized balance option '%s'\n",
 				this_char);
@@ -266,6 +278,8 @@ static void dump_balance_args(struct btrfs_balance_args *args)
 		       (unsigned long long)args->vend);
 	if (args->flags & BTRFS_BALANCE_ARGS_LIMIT)
 		printf(", limit=%llu", (unsigned long long)args->limit);
+	if (args->flags & BTRFS_BALANCE_ARGS_MINCOUNT)
+		printf(", mincount=%llu", (unsigned long long)args->mincount);
 
 	printf("\n");
 }
