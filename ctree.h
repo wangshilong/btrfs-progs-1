@@ -996,6 +996,7 @@ struct btrfs_fs_info {
 	unsigned int on_restoring:1;
 	unsigned int is_chunk_recover:1;
 	unsigned int quota_enabled:1;
+	unsigned int suppress_error:1;
 
 	int (*free_extent_hook)(struct btrfs_trans_handle *trans,
 				struct btrfs_root *root,
@@ -1004,6 +1005,7 @@ struct btrfs_fs_info {
 				int refs_to_drop);
 	struct cache_tree *fsck_extent_cache;
 	struct cache_tree *corrupt_blocks;
+
 };
 
 /*
@@ -2390,6 +2392,30 @@ int btrfs_insert_inode(struct btrfs_trans_handle *trans, struct btrfs_root
 int btrfs_lookup_inode(struct btrfs_trans_handle *trans, struct btrfs_root
 		       *root, struct btrfs_path *path,
 		       struct btrfs_key *location, int mod);
+struct btrfs_inode_extref
+*btrfs_lookup_inode_extref(struct btrfs_trans_handle *trans,
+			   struct btrfs_path *path, struct btrfs_root *root,
+			   u64 ino, u64 parent_ino, u64 index, const char *name,
+			   int namelen, int ins_len);
+int btrfs_del_inode_extref(struct btrfs_trans_handle *trans,
+			   struct btrfs_root *root,
+			   const char *name, int name_len,
+			   u64 inode_objectid, u64 ref_objectid,
+			   u64 *index);
+int btrfs_insert_inode_extref(struct btrfs_trans_handle *trans,
+			      struct btrfs_root *root,
+			      const char *name, int name_len,
+			      u64 inode_objectid, u64 ref_objectid, u64 index);
+struct btrfs_inode_ref
+*btrfs_lookup_inode_ref(struct btrfs_trans_handle *trans,
+			struct btrfs_root *root,
+			struct btrfs_path *path,
+			const char *name, int namelen,
+			u64 ino, u64 parent_ino, u64 index, int ins_len);
+int btrfs_del_inode_ref(struct btrfs_trans_handle *trans,
+			struct btrfs_root *root,
+			const char *name, int name_len,
+			u64 ino, u64 parent_ino, u64 *index);
 
 /* file-item.c */
 int btrfs_del_csums(struct btrfs_trans_handle *trans,
@@ -2421,4 +2447,18 @@ static inline int is_fstree(u64 rootid)
 		return 1;
 	return 0;
 }
+
+/* inode.c */
+int btrfs_add_link(struct btrfs_trans_handle *trans, struct btrfs_root *root,
+		   u64 ino, u64 parent_ino, char *name, int namelen,
+		   u8 type, u64 *index, int add_backref);
+int btrfs_unlink(struct btrfs_trans_handle *trans, struct btrfs_root *root,
+		 u64 ino, u64 parent_ino, u64 index, const char *name,
+		 int namelen, int add_orphan);
+int btrfs_add_orphan_item(struct btrfs_trans_handle *trans,
+			  struct btrfs_root *root,
+			  struct btrfs_path *path,
+			  u64 ino);
+int btrfs_mkdir(struct btrfs_trans_handle *trans, struct btrfs_root *root,
+		char *name, int namelen, u64 parent_ino, u64 *ino, int mode);
 #endif
