@@ -22,10 +22,19 @@ run_check()
 	"$@" >> $RESULT 2>&1 || _fail "failed: $@"
 }
 
+check_prereq()
+{
+	if ! [ -f $here/$1 ]; then
+		_fail "Failed prerequisities: $1";
+	fi
+}
+
 rm -f $RESULT
 
 # test rely on corrupting blocks tool
-run_check make btrfs-corrupt-block
+check_prereq btrfs-corrupt-block
+check_prereq btrfs-image
+check_prereq btrfs
 
 # Some broken filesystem images are kept as .img files, created by the tool
 # btrfs-image, and others are kept as .tar.xz files that contain raw filesystem
@@ -45,11 +54,11 @@ do
 		run_check tar xJf $i
 	fi
 
-	$here/btrfsck test.img >> $RESULT 2>&1
-	[ $? -eq 0 ] && _fail "btrfsck should have detected corruption"
+	$here/btrfs check test.img >> $RESULT 2>&1
+	[ $? -eq 0 ] && _fail "btrfs check should have detected corruption"
 
-	run_check $here/btrfsck --repair test.img
-	run_check $here/btrfsck test.img
+	run_check $here/btrfs check --repair test.img
+	run_check $here/btrfs check test.img
 done
 
 if [ -z $TEST_DEV ] || [ -z $TEST_MNT ];then
@@ -83,7 +92,7 @@ test_extent_tree_rebuild()
 		-b 4096 $TEST_DEV
 
 	$here/btrfs check $TEST_DEV >& /dev/null && \
-			_fail "fsck should detect failure"
+			_fail "btrfs check should detect failure"
 	run_check $here/btrfs check --init-extent-tree $TEST_DEV
 	run_check $here/btrfs check $TEST_DEV
 }

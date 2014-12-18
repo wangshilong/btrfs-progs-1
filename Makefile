@@ -10,12 +10,13 @@ objects = ctree.o disk-io.o radix-tree.o extent-tree.o print-tree.o \
 	  root-tree.o dir-item.o file-item.o inode-item.o inode-map.o \
 	  extent-cache.o extent_io.o volumes.o utils.o repair.o \
 	  qgroup.o raid6.o free-space-cache.o list_sort.o props.o \
-	  ulist.o qgroup-verify.o backref.o
+	  ulist.o qgroup-verify.o backref.o string-table.o task-utils.o \
+	  inode.o
 cmds_objects = cmds-subvolume.o cmds-filesystem.o cmds-device.o cmds-scrub.o \
 	       cmds-inspect.o cmds-balance.o cmds-send.o cmds-receive.o \
 	       cmds-quota.o cmds-qgroup.o cmds-replace.o cmds-check.o \
 	       cmds-restore.o cmds-rescue.o chunk-recover.o super-recover.o \
-	       cmds-property.o
+	       cmds-property.o cmds-fi-disk_usage.o
 libbtrfs_objects = send-stream.o send-utils.o rbtree.o btrfs-list.o crc32c.o \
 		   uuid-tree.o utils-lib.o rbtree-utils.o
 libbtrfs_headers = send-stream.h send-utils.h send.h rbtree.h btrfs-list.h \
@@ -26,7 +27,7 @@ TESTS = fsck-tests.sh convert-tests.sh
 INSTALL = install
 prefix ?= /usr/local
 bindir = $(prefix)/bin
-lib_LIBS = -luuid -lblkid -lm -lz -llzo2 -L.
+lib_LIBS = -luuid -lblkid -lm -lz -llzo2 -L. -pthread
 libdir ?= $(prefix)/lib
 incdir = $(prefix)/include/btrfs
 LIBS = $(lib_LIBS) $(libs_static)
@@ -58,7 +59,6 @@ progs_static = $(foreach p,$(progs),$(p).static)
 # external libs required by various binaries; for btrfs-foo,
 # specify btrfs_foo_libs = <list of libs>; see $($(subst...)) rules below
 btrfs_convert_libs = -lext2fs -lcom_err
-btrfs_image_libs = -lpthread
 btrfs_fragments_libs = -lgd -lpng -ljpeg -lfreetype
 
 SUBDIRS =
@@ -90,7 +90,7 @@ static_libbtrfs_objects = $(patsubst %.o, %.static.o, $(libbtrfs_objects))
 # Define static compilation flags
 STATIC_CFLAGS = $(CFLAGS) -ffunction-sections -fdata-sections
 STATIC_LDFLAGS = -static -Wl,--gc-sections
-STATIC_LIBS = $(lib_LIBS) -lpthread
+STATIC_LIBS = $(lib_LIBS)
 
 libs_shared = libbtrfs.so.0.1
 libs_static = libbtrfs.a
@@ -140,7 +140,7 @@ $(BUILDDIRS):
 	@echo "Making all in $(patsubst build-%,%,$@)"
 	$(Q)$(MAKE) $(MAKEOPTS) -C $(patsubst build-%,%,$@)
 
-test:
+test: btrfs btrfs-convert btrfs-image btrfs-corrupt-block
 	$(Q)for t in $(TESTS); do \
 		echo "     [TEST]    $$t"; \
 		bash tests/$$t || exit 1; \
@@ -193,7 +193,7 @@ btrfs-%: $(objects) $(libs) btrfs-%.o
 btrfs: $(objects) btrfs.o help.o $(cmds_objects) $(libs)
 	@echo "    [LD]     $@"
 	$(Q)$(CC) $(CFLAGS) -o btrfs btrfs.o help.o $(cmds_objects) \
-		$(objects) $(LDFLAGS) $(LIBS) -lpthread
+		$(objects) $(LDFLAGS) $(LIBS)
 
 btrfs.static: $(static_objects) btrfs.static.o help.static.o $(static_cmds_objects) $(static_libbtrfs_objects)
 	@echo "    [LD]     $@"
@@ -241,7 +241,7 @@ ioctl-test: $(objects) $(libs) ioctl-test.o
 
 send-test: $(objects) $(libs) send-test.o
 	@echo "    [LD]     $@"
-	$(Q)$(CC) $(CFLAGS) -o send-test $(objects) send-test.o $(LDFLAGS) $(LIBS) -lpthread
+	$(Q)$(CC) $(CFLAGS) -o send-test $(objects) send-test.o $(LDFLAGS) $(LIBS)
 
 library-test: $(libs_shared) library-test.o
 	@echo "    [LD]     $@"

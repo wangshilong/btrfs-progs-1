@@ -66,7 +66,7 @@ static int cmd_subvol_create(int argc, char **argv)
 
 	optind = 1;
 	while (1) {
-		int c = getopt(argc, argv, "c:i:");
+		int c = getopt(argc, argv, "c:i:v");
 		if (c < 0)
 			break;
 
@@ -217,10 +217,11 @@ static int cmd_subvol_delete(int argc, char **argv)
 	char	*dupvname = NULL;
 	char	*path;
 	DIR	*dirstream = NULL;
-	int sync_mode = 0;
+	int verbose = 0;
+	int commit_mode = 0;
 	struct option long_options[] = {
-		{"commit-after", no_argument, NULL, 'c'},  /* sync mode 1 */
-		{"commit-each", no_argument, NULL, 'C'},  /* sync mode 2 */
+		{"commit-after", no_argument, NULL, 'c'},  /* commit mode 1 */
+		{"commit-each", no_argument, NULL, 'C'},  /* commit mode 2 */
 		{NULL, 0, NULL, 0}
 	};
 
@@ -234,10 +235,13 @@ static int cmd_subvol_delete(int argc, char **argv)
 
 		switch(c) {
 		case 'c':
-			sync_mode = 1;
+			commit_mode = 1;
 			break;
 		case 'C':
-			sync_mode = 2;
+			commit_mode = 2;
+			break;
+		case 'v':
+			verbose++;
 			break;
 		default:
 			usage(cmd_subvol_delete_usage);
@@ -247,9 +251,11 @@ static int cmd_subvol_delete(int argc, char **argv)
 	if (check_argc_min(argc - optind, 1))
 		usage(cmd_subvol_delete_usage);
 
-	printf("Transaction commit: %s\n",
-		!sync_mode ? "none (default)" :
-		sync_mode == 1 ? "at the end" : "after each");
+	if (verbose > 0) {
+		printf("Transaction commit: %s\n",
+			!commit_mode ? "none (default)" :
+			commit_mode == 1 ? "at the end" : "after each");
+	}
 
 	cnt = optind;
 
@@ -303,7 +309,9 @@ again:
 		goto out;
 	}
 
-	printf("Delete subvolume '%s/%s'\n", dname, vname);
+	printf("Delete subvolume (%s): '%s/%s'\n",
+		commit_mode == 2 || (commit_mode == 1 && cnt + 1 == argc)
+		? "commit" : "no-commit", dname, vname);
 	strncpy_null(args.name, vname);
 	res = ioctl(fd, BTRFS_IOC_SNAP_DESTROY, &args);
 	e = errno;
@@ -315,7 +323,7 @@ again:
 		goto out;
 	}
 
-	if (sync_mode == 1) {
+	if (commit_mode == 1) {
 		res = wait_for_commit(fd);
 		if (res < 0) {
 			fprintf(stderr,
@@ -339,7 +347,7 @@ out:
 		goto again;
 	}
 
-	if (sync_mode == 2 && fd != -1) {
+	if (commit_mode == 2 && fd != -1) {
 		res = wait_for_commit(fd);
 		if (res < 0) {
 			fprintf(stderr,

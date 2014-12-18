@@ -28,6 +28,7 @@
 #include "ctree.h"
 #include "ioctl.h"
 #include "utils.h"
+#include "cmds-fi-disk_usage.h"
 
 #include "commands.h"
 
@@ -449,6 +450,134 @@ out:
 	return err;
 }
 
+const char * const cmd_device_usage_usage[] = {
+	"btrfs device usage [options] <path> [<path>..]",
+	"Show detailed information about internal allocations in devices.",
+	"-b|--raw           raw numbers in bytes",
+	"-h                 human friendly numbers, base 1024 (default)",
+	"-H                 human friendly numbers, base 1000",
+	"--iec              use 1024 as a base (KiB, MiB, GiB, TiB)",
+	"--si               use 1000 as a base (kB, MB, GB, TB)",
+	"-k|--kbytes        show sizes in KiB, or kB with --si",
+	"-m|--mbytes        show sizes in MiB, or MB with --si",
+	"-g|--gbytes        show sizes in GiB, or GB with --si",
+	"-t|--tbytes        show sizes in TiB, or TB with --si",
+	NULL
+};
+
+static int _cmd_device_usage(int fd, char *path, unsigned unit_mode)
+{
+	int i;
+	int ret = 0;
+	struct chunk_info *chunkinfo = NULL;
+	struct device_info *devinfo = NULL;
+	int chunkcount = 0;
+	int devcount = 0;
+
+	ret = load_chunk_and_device_info(fd, &chunkinfo, &chunkcount, &devinfo,
+			&devcount);
+	if (ret)
+		goto out;
+
+	for (i = 0; i < devcount; i++) {
+		printf("%s, ID: %llu\n", devinfo[i].path, devinfo[i].devid);
+		print_device_sizes(fd, &devinfo[i], unit_mode);
+		print_device_chunks(fd, &devinfo[i], chunkinfo, chunkcount,
+				unit_mode);
+		printf("\n");
+	}
+
+out:
+	free(devinfo);
+	free(chunkinfo);
+
+	return ret;
+}
+
+int cmd_device_usage(int argc, char **argv)
+{
+	unsigned unit_mode = UNITS_DEFAULT;
+	int ret = 0;
+	int	i, more_than_one = 0;
+
+	optind = 1;
+	while (1) {
+		int long_index;
+		static const struct option long_options[] = {
+			{ "raw", no_argument, NULL, 'b'},
+			{ "kbytes", no_argument, NULL, 'k'},
+			{ "mbytes", no_argument, NULL, 'm'},
+			{ "gbytes", no_argument, NULL, 'g'},
+			{ "tbytes", no_argument, NULL, 't'},
+			{ "si", no_argument, NULL, 256},
+			{ "iec", no_argument, NULL, 257},
+		};
+		int c = getopt_long(argc, argv, "bhHkmgt", long_options,
+				&long_index);
+
+		if (c < 0)
+			break;
+		switch (c) {
+		case 'b':
+			unit_mode = UNITS_RAW;
+			break;
+		case 'k':
+			units_set_base(&unit_mode, UNITS_KBYTES);
+			break;
+		case 'm':
+			units_set_base(&unit_mode, UNITS_MBYTES);
+			break;
+		case 'g':
+			units_set_base(&unit_mode, UNITS_GBYTES);
+			break;
+		case 't':
+			units_set_base(&unit_mode, UNITS_TBYTES);
+			break;
+		case 'h':
+			unit_mode = UNITS_HUMAN_BINARY;
+			break;
+		case 'H':
+			unit_mode = UNITS_HUMAN_DECIMAL;
+			break;
+		case 256:
+			units_set_mode(&unit_mode, UNITS_DECIMAL);
+			break;
+		case 257:
+			units_set_mode(&unit_mode, UNITS_BINARY);
+			break;
+		default:
+			usage(cmd_device_usage_usage);
+		}
+	}
+
+	if (check_argc_min(argc - optind, 1))
+		usage(cmd_device_usage_usage);
+
+	for (i = optind; i < argc ; i++) {
+		int fd;
+		DIR	*dirstream = NULL;
+		if (more_than_one)
+			printf("\n");
+
+		fd = open_file_or_dir(argv[i], &dirstream);
+		if (fd < 0) {
+			fprintf(stderr, "ERROR: can't access '%s'\n",
+				argv[1]);
+			ret = 1;
+			goto out;
+		}
+
+		ret = _cmd_device_usage(fd, argv[i], unit_mode);
+		close_file_or_dir(fd, dirstream);
+
+		if (ret)
+			goto out;
+		more_than_one = 1;
+	}
+out:
+	return !!ret;
+}
+
 const struct cmd_group device_cmd_group = {
 	device_cmd_group_usage, NULL, {
 		{ "add", cmd_add_dev, cmd_add_dev_usage, NULL, 0 },
@@ -456,6 +585,8 @@ const struct cmd_group device_cmd_group = {
 		{ "scan", cmd_scan_dev, cmd_scan_dev_usage, NULL, 0 },
 		{ "ready", cmd_ready_dev, cmd_ready_dev_usage, NULL, 0 },
 		{ "stats", cmd_dev_stats, cmd_dev_stats_usage, NULL, 0 },
+		{ "usage", cmd_device_usage,
+			cmd_device_usage_usage, NULL, 0 },
 		NULL_CMD_STRUCT
 	}
 };

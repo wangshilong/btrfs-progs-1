@@ -35,6 +35,8 @@
 #include <uuid/uuid.h>
 #include <ctype.h>
 #include <sys/xattr.h>
+#include <limits.h>
+#include <linux/limits.h>
 #include <blkid/blkid.h>
 #include <ftw.h>
 #include "ctree.h"
@@ -46,7 +48,8 @@
 
 static u64 index_cnt = 2;
 
-#define DEFAULT_MKFS_FEATURES	(BTRFS_FEATURE_INCOMPAT_EXTENDED_IREF)
+#define DEFAULT_MKFS_FEATURES	(BTRFS_FEATURE_INCOMPAT_EXTENDED_IREF \
+		| BTRFS_FEATURE_INCOMPAT_SKINNY_METADATA)
 
 #define DEFAULT_MKFS_LEAF_SIZE 16384
 

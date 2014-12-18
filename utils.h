@@ -134,6 +134,12 @@ int find_mount_root(const char *path, char **mount_root);
 int get_device_info(int fd, u64 devid,
 		struct btrfs_ioctl_dev_info_args *di_args);
 int test_uuid_unique(char *fs_uuid);
+u64 disk_size(char *path);
+int get_device_info(int fd, u64 devid,
+		struct btrfs_ioctl_dev_info_args *di_args);
+u64 get_partition_size(char *dev);
+const char* group_type_str(u64 flags);
+const char* group_profile_str(u64 flags);
 
 int test_minimum_size(const char *file, u32 leafsize);
 int test_issubvolname(const char *name);
@@ -160,5 +166,27 @@ static inline u64 btrfs_min_dev_size(u32 leafsize)
 }
 
 int find_next_key(struct btrfs_path *path, struct btrfs_key *key);
+char* btrfs_group_type_str(u64 flag);
+char* btrfs_group_profile_str(u64 flag);
+
+/*
+ * Get the length of the string converted from a u64 number.
+ *
+ * Result is equal to log10(num) + 1, but without the use of math library.
+ */
+static inline int count_digits(u64 num)
+{
+	int ret = 0;
+
+	if (num == 0)
+		return 1;
+	while (num > 0) {
+		ret++;
+		num /= 10;
+	}
+	return ret;
+}
+
+int btrfs_tree_search2_ioctl_supported(int fd);
 
 #endif
